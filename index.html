@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة X O الثقافية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Cairo', sans-serif;
+        }
+        .cell {
+            transition: all 0.3s ease;
+        }
+        .cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .winner-line {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .question-modal {
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">🔥 معركة العقول الثقافية</h1>
+            <p class="text-xl text-white/90">⚡ تحدى معرفتك واثبت أنك بطل الثقافة! 🏆</p>
+        </div>
+
+        <!-- Game Info -->
+        <div class="bg-white/20 backdrop-blur-lg rounded-2xl p-6 mb-8 text-center">
+            <div class="flex justify-center items-center gap-8 mb-4">
+                <div class="text-white">
+                    <span class="text-2xl font-bold">🔥 المحارب الأول (X)</span>
+                    <div class="text-lg mt-1">انتصارات: <span id="scoreX" class="font-bold">0</span></div>
+                </div>
+                <div class="text-3xl">⚔️</div>
+                <div class="text-white">
+                    <span class="text-2xl font-bold">⚡ المحارب الثاني (O)</span>
+                    <div class="text-lg mt-1">انتصارات: <span id="scoreO" class="font-bold">0</span></div>
+                </div>
+            </div>
+            <div id="currentPlayer" class="text-xl font-bold text-yellow-300">🎯 دور المحارب الأول - استعد للمعركة!</div>
+        </div>
+
+        <!-- Game Board -->
+        <div class="max-w-md mx-auto mb-8">
+            <div class="grid grid-cols-3 gap-4 bg-white/20 backdrop-blur-lg p-6 rounded-2xl">
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(0)"></div>
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(1)"></div>
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(2)"></div>
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(3)"></div>
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(4)"></div>
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(5)"></div>
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(6)"></div>
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(7)"></div>
+                <div class="cell bg-white/30 h-20 rounded-xl flex items-center justify-center text-3xl font-bold cursor-pointer hover:bg-white/40" onclick="cellClick(8)"></div>
+            </div>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="text-center">
+            <button onclick="resetGame()" class="bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-8 rounded-xl transition-all duration-300 backdrop-blur-lg">
+                🔄 لعبة جديدة
+            </button>
+        </div>
+    </div>
+
+    <!-- Question Modal -->
+    <div id="questionModal" class="fixed inset-0 question-modal bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-lg mx-4 text-center">
+            <h3 class="text-2xl font-bold text-gray-800 mb-6">🤔 سؤال ثقافي</h3>
+            <p id="questionText" class="text-lg text-gray-700 mb-6 leading-relaxed"></p>
+            <div id="answerButtons" class="space-y-3"></div>
+        </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div id="resultModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center">
+            <div id="resultIcon" class="text-6xl mb-4"></div>
+            <h3 id="resultTitle" class="text-2xl font-bold text-gray-800 mb-4"></h3>
+            <p id="resultMessage" class="text-lg text-gray-600 mb-6"></p>
+            <button onclick="closeResultModal()" class="bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold py-3 px-8 rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all duration-300">
+                متابعة اللعب
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let scoreX = 0;
+        let scoreO = 0;
+        let currentCellIndex = -1;
+        let usedQuestions = new Set();
+
+        const questions = [
+            {
+                question: "🧠 ما هو العنصر الكيميائي الذي رمزه Au؟",
+                answers: ["الفضة", "الذهب", "النحاس", "البلاتين"],
+                correct: 1
+            },
+            {
+                question: "🌍 في أي عام سقط جدار برلين؟",
+                answers: ["1987", "1988", "1989", "1990"],
+                correct: 2
+            },
+            {
+                question: "🔬 كم عدد العظام في جسم الإنسان البالغ؟",
+                answers: ["196", "206", "216", "226"],
+                correct: 1
+            },
+            {
+                question: "🎨 من رسم لوحة الموناليزا الشهيرة؟",
+                answers: ["مايكل أنجلو", "ليوناردو دا فينشي", "بيكاسو", "فان جوخ"],
+                correct: 1
+            },
+            {
+                question: "🌊 ما هو أعمق خندق في المحيطات؟",
+                answers: ["خندق بورتوريكو", "خندق ماريانا", "خندق اليابان", "خندق بيرو"],
+                correct: 1
+            },
+            {
+                question: "🏛️ في أي مدينة يقع تاج محل؟",
+                answers: ["دلهي", "مومباي", "أغرا", "كلكتا"],
+                correct: 2
+            },
+            {
+                question: "⚡ من اخترع المصباح الكهربائي؟",
+                answers: ["نيكولا تسلا", "توماس إديسون", "ألكسندر بيل", "بنجامين فرانكلين"],
+                correct: 1
+            },
+            {
+                question: "🌌 كم عدد الأقمار التي تدور حول كوكب المشتري؟",
+                answers: ["67", "79", "82", "95"],
+                correct: 1
+            },
+            {
+                question: "📚 من كتب رواية 'مئة عام من العزلة'؟",
+                answers: ["بورخيس", "غابرييل غارسيا ماركيز", "إيزابيل الليندي", "أوكتافيو باث"],
+                correct: 1
+            },
+            {
+                question: "🎵 كم عدد الأوتار في آلة الكمان؟",
+                answers: ["3", "4", "5", "6"],
+                correct: 1
+            },
+            {
+                question: "🏔️ ما هو أعلى جبل في قارة أفريقيا؟",
+                answers: ["جبل كينيا", "جبل كليمنجارو", "جبل إلجون", "جبل راس داشان"],
+                correct: 1
+            },
+            {
+                question: "🧬 ما هو الحمض النووي المسؤول عن نقل الصفات الوراثية؟",
+                answers: ["RNA", "DNA", "ATP", "ADP"],
+                correct: 1
+            },
+            {
+                question: "🏺 في أي حضارة ظهرت أول كتابة مسمارية؟",
+                answers: ["المصرية", "السومرية", "البابلية", "الآشورية"],
+                correct: 1
+            },
+            {
+                question: "🌡️ عند أي درجة حرارة يتجمد الماء بالمقياس المئوي؟",
+                answers: ["-1°", "0°", "1°", "32°"],
+                correct: 1
+            },
+            {
+                question: "🎭 من كتب مسرحية 'هاملت'؟",
+                answers: ["كريستوفر مارلو", "وليم شكسبير", "بن جونسون", "جون ويبستر"],
+                correct: 1
+            },
+            {
+                question: "🚀 ما هو أول كوكب تم اكتشافه بالتلسكوب؟",
+                answers: ["المريخ", "المشتري", "أورانوس", "نبتون"],
+                correct: 2
+            },
+            {
+                question: "💎 ما هو أقسى معدن طبيعي على الأرض؟",
+                answers: ["الياقوت", "الزمرد", "الألماس", "التوباز"],
+                correct: 2
+            },
+            {
+                question: "🏛️ كم عجيبة من عجائب الدنيا السبع القديمة ما زالت موجودة؟",
+                answers: ["واحدة", "اثنتان", "ثلاث", "أربع"],
+                correct: 0
+            },
+            {
+                question: "🌋 ما هو أكبر بركان نشط في العالم؟",
+                answers: ["إتنا", "فيزوف", "مونا لوا", "كراكاتوا"],
+                correct: 2
+            },
+            {
+                question: "🧮 من وضع نظرية النسبية؟",
+                answers: ["إسحاق نيوتن", "ألبرت أينشتاين", "غاليليو", "كوبرنيكوس"],
+                correct: 1
+            },
+            {
+                question: "🏆 في أي عام أقيمت أول دورة ألعاب أولمبية حديثة؟",
+                answers: ["1892", "1896", "1900", "1904"],
+                correct: 1
+            },
+            {
+                question: "🌿 ما هو الغاز الذي تمتصه النباتات من الهواء؟",
+                answers: ["الأكسجين", "النيتروجين", "ثاني أكسيد الكربون", "الهيدروجين"],
+                correct: 2
+            },
+            {
+                question: "🎪 كم عدد حلقات الألعاب الأولمبية؟",
+                answers: ["4", "5", "6", "7"],
+                correct: 1
+            },
+            {
+                question: "📐 كم زاوية في المثلث؟",
+                answers: ["2", "3", "4", "5"],
+                correct: 1
+            },
+            {
+                question: "🌊 ما هو المضيق الذي يفصل بين أوروبا وآسيا؟",
+                answers: ["البوسفور", "جبل طارق", "هرمز", "ملقا"],
+                correct: 0
+            }
+        ];
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8],
+            [0, 3, 6], [1, 4, 7], [2, 5, 8],
+            [0, 4, 8], [2, 4, 6]
+        ];
+
+        function cellClick(index) {
+            if (board[index] !== '' || !gameActive) return;
+            
+            currentCellIndex = index;
+            showQuestion();
+        }
+
+        function getRandomQuestion() {
+            let availableQuestions = questions.filter((_, index) => !usedQuestions.has(index));
+            
+            if (availableQuestions.length === 0) {
+                usedQuestions.clear();
+                availableQuestions = questions;
+            }
+            
+            const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+            const selectedQuestion = availableQuestions[randomIndex];
+            const originalIndex = questions.indexOf(selectedQuestion);
+            usedQuestions.add(originalIndex);
+            
+            return selectedQuestion;
+        }
+
+        function showQuestion() {
+            const question = getRandomQuestion();
+            document.getElementById('questionText').textContent = question.question;
+            
+            const buttonsContainer = document.getElementById('answerButtons');
+            buttonsContainer.innerHTML = '';
+            
+            question.answers.forEach((answer, index) => {
+                const button = document.createElement('button');
+                button.textContent = answer;
+                button.className = 'w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold py-3 px-6 rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300';
+                button.onclick = () => answerQuestion(index === question.correct);
+                buttonsContainer.appendChild(button);
+            });
+            
+            document.getElementById('questionModal').classList.remove('hidden');
+            document.getElementById('questionModal').classList.add('flex');
+        }
+
+        function answerQuestion(isCorrect) {
+            document.getElementById('questionModal').classList.add('hidden');
+            document.getElementById('questionModal').classList.remove('flex');
+            
+            if (isCorrect) {
+                const successMessages = [
+                    "🔥 رائع! عقل ذكي ومتميز!",
+                    "⚡ ممتاز! أنت محارب المعرفة!",
+                    "🌟 بطل! إجابة مذهلة!",
+                    "🚀 عبقري! تستحق التصفيق!",
+                    "💎 أسطوري! معلوماتك قوية!",
+                    "🏆 بطل المعرفة! واصل التميز!",
+                    "⭐ نجم ساطع! إجابة رائعة!",
+                    "🎯 هدف في المرمى! دقة عالية!"
+                ];
+                const randomSuccess = successMessages[Math.floor(Math.random() * successMessages.length)];
+                makeMove();
+                showResult(true, randomSuccess, "تم وضع علامتك بنجاح! استمر في التألق!");
+            } else {
+                const failMessages = [
+                    "💪 لا تستسلم! المحاولة القادمة ستكون أفضل!",
+                    "🔥 تحدي رائع! عد بقوة أكبر!",
+                    "⚡ كل خطأ درس! أنت تتعلم وتتطور!",
+                    "🌟 المحاولة جزء من النجاح! واصل القتال!",
+                    "🚀 الأبطال لا يستسلمون! عودة قوية!",
+                    "💎 كل محاولة تجعلك أقوى! لا تتوقف!",
+                    "🏆 الفشل بداية النجاح! انطلق بقوة!",
+                    "⭐ النجوم تولد من التحديات! أنت نجم!"
+                ];
+                const randomFail = failMessages[Math.floor(Math.random() * failMessages.length)];
+                showResult(false, randomFail, "الدور التالي فرصتك للانتقام! استعد للمعركة!");
+                switchPlayer();
+            }
+        }
+
+        function makeMove() {
+            board[currentCellIndex] = currentPlayer;
+            document.getElementsByClassName('cell')[currentCellIndex].textContent = currentPlayer;
+            document.getElementsByClassName('cell')[currentCellIndex].style.color = currentPlayer === 'X' ? '#ef4444' : '#3b82f6';
+            
+            if (checkWinner()) {
+                gameActive = false;
+                if (currentPlayer === 'X') {
+                    scoreX++;
+                    document.getElementById('scoreX').textContent = scoreX;
+                } else {
+                    scoreO++;
+                    document.getElementById('scoreO').textContent = scoreO;
+                }
+                setTimeout(() => {
+                    const winMessages = [
+                        `🏆 أسطورة! اللاعب ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} ملك المعرفة!`,
+                        `⚡ عاصفة من الذكاء! اللاعب ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} بطل لا يُقهر!`,
+                        `🔥 انتصار ساحق! اللاعب ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} عبقري العصر!`,
+                        `🌟 نجم متألق! اللاعب ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} سيد الألعاب!`,
+                        `🚀 صاروخ المعرفة! اللاعب ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} وصل للقمة!`
+                    ];
+                    const randomWin = winMessages[Math.floor(Math.random() * winMessages.length)];
+                    showResult(true, randomWin, "🎊 انتصار مذهل! أنت بطل حقيقي يستحق كل التقدير! 🎊");
+                }, 1000);
+                return;
+            }
+            
+            if (board.every(cell => cell !== '')) {
+                gameActive = false;
+                setTimeout(() => {
+                    const drawMessages = [
+                        "🤝 معركة الأساطير! تعادل ملحمي!",
+                        "⚔️ صراع الجبابرة! قوة متساوية!",
+                        "🔥 مواجهة النار بالنار! تعادل رائع!",
+                        "⚡ برق يصطدم ببرق! طاقة متوازنة!",
+                        "🌟 نجمان في السماء! إبداع مشترك!"
+                    ];
+                    const randomDraw = drawMessages[Math.floor(Math.random() * drawMessages.length)];
+                    showResult(true, randomDraw, "🎭 عرض مذهل من كلا المحاربين! أنتما أبطال حقيقيون! 🎭");
+                }, 1000);
+                return;
+            }
+            
+            switchPlayer();
+        }
+
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            const playerMessages = [
+                `🎯 دور المحارب ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} - استعد للمعركة!`,
+                `⚡ حان وقت المحارب ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} - أظهر قوتك!`,
+                `🔥 المحارب ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} في الساحة - اثبت تفوقك!`,
+                `🌟 دور البطل ${currentPlayer === 'X' ? 'الأول' : 'الثاني'} - اجعل الجميع يشاهد!`
+            ];
+            const randomMessage = playerMessages[Math.floor(Math.random() * playerMessages.length)];
+            document.getElementById('currentPlayer').textContent = randomMessage;
+        }
+
+        function checkWinner() {
+            return winningConditions.some(condition => {
+                const [a, b, c] = condition;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    // Highlight winning cells
+                    [a, b, c].forEach(index => {
+                        document.getElementsByClassName('cell')[index].classList.add('winner-line');
+                        document.getElementsByClassName('cell')[index].style.backgroundColor = 'rgba(34, 197, 94, 0.3)';
+                    });
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        function showResult(success, title, message) {
+            document.getElementById('resultIcon').textContent = success ? (title.includes('فاز') ? '🏆' : title.includes('تعادل') ? '🤝' : '✅') : '❌';
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultMessage').textContent = message;
+            document.getElementById('resultModal').classList.remove('hidden');
+            document.getElementById('resultModal').classList.add('flex');
+        }
+
+        function closeResultModal() {
+            document.getElementById('resultModal').classList.add('hidden');
+            document.getElementById('resultModal').classList.remove('flex');
+            
+            if (!gameActive) {
+                resetBoard();
+            }
+        }
+
+        function resetBoard() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            currentPlayer = 'X';
+            document.getElementById('currentPlayer').textContent = '🎯 دور المحارب الأول - استعد للمعركة!';
+            
+            const cells = document.getElementsByClassName('cell');
+            for (let cell of cells) {
+                cell.textContent = '';
+                cell.classList.remove('winner-line');
+                cell.style.backgroundColor = '';
+                cell.style.color = '';
+            }
+        }
+
+        function resetGame() {
+            resetBoard();
+            scoreX = 0;
+            scoreO = 0;
+            usedQuestions.clear();
+            document.getElementById('scoreX').textContent = '0';
+            document.getElementById('scoreO').textContent = '0';
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9755a79482fd24fe',t:'MTc1NjIzNTY5Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
